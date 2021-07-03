@@ -1,0 +1,8 @@
+(defnode main)
+(defloop test
+  (Setup (Prometheus.Exposer))
+  (Prometheus.Increment "test_counter" "Label1" "Value1")
+  (Repeat (-> (Prometheus.Increment "test_counter" "Label1" "Value2")) :Times 2)
+  (Repeat (-> (Prometheus.Increment "test_counter" "Label1" "Value3")) :Times 4))
+(schedule main test)
+(run main 0.2)

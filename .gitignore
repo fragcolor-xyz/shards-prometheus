@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+build
+cblocks
+chainblocks.log
