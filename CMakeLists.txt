@@ -1,8 +1,8 @@
-project("chainblocks-prometheus")
+project("shards-prometheus")
 cmake_minimum_required(VERSION 3.14)
 include(ExternalProject)
 set(CMAKE_CXX_STANDARD 17)
-add_compile_options(-Wall -march=core2)
+add_compile_options(-Wall)
 
 #### Files to format and tidy
 set(
@@ -15,11 +15,12 @@ set(
 set(
   MY_PROJECT_HEADER_PATHS
   ${MY_PROJECT_HEADER_PATHS}
-  -I${CHAINBLOCKS_DIR}/include
-  -I${CHAINBLOCKS_DIR}/deps/stb
-  -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
-  -I${CHAINBLOCKS_DIR}/deps/nameof/include
-  -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
+  -I${SHARDS_DIR}/include
+  -I${SHARDS_DIR}/deps/stb
+  -I${SHARDS_DIR}/deps/cpp-taskflow
+  -I${SHARDS_DIR}/deps/nameof/include
+  -I${SHARDS_DIR}/deps/magic_enum/include
+  -I${SHARDS_DIR}/deps/spdlog/include
   )
 
 ### setup clang format
@@ -79,7 +80,7 @@ if(APPLE)
 endif()
 
 ExternalProject_Add(prometheus_a
-  GIT_REPOSITORY    https://github.com/chainblocks/prometheus-cpp.git
+  GIT_REPOSITORY    https://github.com/shards-lang/prometheus-cpp.git
   GIT_TAG           8400b647f46a017222f9b9d5ca300ed20090d71f
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/prometheus_a
   CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/prometheus_a
@@ -96,11 +97,12 @@ add_dependencies(libprometheus-pull prometheus_a)
 set_target_properties(libprometheus-pull PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/prometheus_a/lib/libprometheus-cpp-pull.a)
 
 include_directories(
-  ${CHAINBLOCKS_DIR}/include
-  ${CHAINBLOCKS_DIR}/deps/stb
-  ${CHAINBLOCKS_DIR}/deps/cpp-taskflow
-  ${CHAINBLOCKS_DIR}/deps/nameof/include
-  ${CHAINBLOCKS_DIR}/deps/magic_enum/include
+  ${SHARDS_DIR}/include
+  ${SHARDS_DIR}/deps/stb
+  ${SHARDS_DIR}/deps/cpp-taskflow
+  ${SHARDS_DIR}/deps/nameof/include
+  ${SHARDS_DIR}/deps/magic_enum/include
+  ${SHARDS_DIR}/deps/spdlog/include
   )
 
 add_library(

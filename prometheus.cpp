@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#include <dllblock.hpp>
+#include <dllshard.hpp>
 
 #include <array>
 #include <chrono>
@@ -18,12 +18,12 @@
 #include "prometheus/family.h"
 #include "prometheus/registry.h"
 
-using namespace chainblocks;
+using namespace shards;
 
 namespace Prometheus {
 struct Exposer {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   std::optional<prometheus::Exposer> exposer;
   std::shared_ptr<prometheus::Registry> registry;
@@ -31,33 +31,33 @@ struct Exposer {
                                       prometheus::Family<prometheus::Counter>>>
       counters;
   std::string endpoint{"127.0.0.1:8080"};
-  CBVar *self{nullptr};
+  SHVar *self{nullptr};
 
   static inline Parameters Params{
       {"Endpoint",
        "The URL prometheus will use to pull data from."_optional,
        {CoreInfo::StringType}}};
 
-  static CBParametersInfo parameters() { return Params; }
+  static SHParametersInfo parameters() { return Params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, SHVar value) {
     endpoint = value.payload.stringValue;
   }
 
-  CBVar getParam(int index) { return Var{endpoint}; }
+  SHVar getParam(int index) { return Var{endpoint}; }
 
   static inline Type ExposerType{
-      {CBType::Object, {.object = {'frag', 'prom'}}}};
-  static inline CBExposedTypeInfo ExposerInfo{
+      {SHType::Object, {.object = {'frag', 'prom'}}}};
+  static inline SHExposedTypeInfo ExposerInfo{
       "Prometheus.Exposer", "The current active prometheus exposer"_optional,
       ExposerType};
-  static CBExposedTypesInfo exposedVariables() { return {&ExposerInfo, 1, 0}; }
+  static SHExposedTypesInfo exposedVariables() { return {&ExposerInfo, 1, 0}; }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     exposer.emplace(endpoint);
     registry = std::make_shared<prometheus::Registry>();
     self = Core::referenceVariable(context, "Prometheus.Exposer");
-    self->valueType = CBType::Object;
+    self->valueType = SHType::Object;
     self->payload.objectValue = this;
     self->payload.objectVendorId = 'frag';
     self->payload.objectTypeId = 'prom';
@@ -73,12 +73,12 @@ struct Exposer {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return input; }
+  SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
 
 struct Increment {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline Parameters Params{
       {"Name",
@@ -91,19 +91,19 @@ struct Increment {
        "The name of the value to increment."_optional,
        {CoreInfo::StringType}}};
 
-  static CBParametersInfo parameters() { return Params; }
+  static SHParametersInfo parameters() { return Params; }
 
-  static CBExposedTypesInfo requiredVariables() {
+  static SHExposedTypesInfo requiredVariables() {
     return {&Exposer::ExposerInfo, 1, 0};
   }
 
   std::string _name;
   std::string _label;
   std::string _value;
-  CBVar *expo{nullptr};
+  SHVar *expo{nullptr};
   std::optional<std::reference_wrapper<prometheus::Counter>> _counter;
 
-  void setParam(int index, CBVar val) {
+  void setParam(int index, SHVar val) {
     switch (index) {
     case 0:
       _name = val.payload.stringValue;
@@ -119,7 +119,7 @@ struct Increment {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var{_name};
@@ -132,10 +132,10 @@ struct Increment {
     }
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     expo = Core::referenceVariable(context, "Prometheus.Exposer");
 
-    if (expo->valueType != CBType::Object ||
+    if (expo->valueType != SHType::Object ||
         expo->payload.objectVendorId != 'frag' ||
         expo->payload.objectTypeId != 'prom')
       throw WarmupError{"Prometheus.Exposer is not an exposer"};
@@ -161,15 +161,15 @@ struct Increment {
     _counter.reset();
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     _counter->get().Increment();
     return input;
   }
 };
 } // namespace Prometheus
-namespace chainblocks {
-void registerBlocks() {
-  REGISTER_CBLOCK("Prometheus.Exposer", Prometheus::Exposer);
-  REGISTER_CBLOCK("Prometheus.Increment", Prometheus::Increment);
+namespace shards {
+void registerShards() {
+  REGISTER_SHARD("Prometheus.Exposer", Prometheus::Exposer);
+  REGISTER_SHARD("Prometheus.Increment", Prometheus::Increment);
 }
-} // namespace chainblocks
+} // namespace shards
