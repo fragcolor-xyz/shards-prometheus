@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#include <dllshard.hpp>
+#include <shards/dllshard.hpp>
 
 #include <array>
 #include <chrono>
@@ -56,7 +56,7 @@ struct Exposer {
   void warmup(SHContext *context) {
     exposer.emplace(endpoint);
     registry = std::make_shared<prometheus::Registry>();
-    self = Core::referenceVariable(context, "Prometheus.Exposer");
+    self = Core::referenceVariable(context, "Prometheus.Exposer"_swl);
     self->valueType = SHType::Object;
     self->payload.objectValue = this;
     self->payload.objectVendorId = 'frag';
@@ -133,7 +133,7 @@ struct Increment {
   }
 
   void warmup(SHContext *context) {
-    expo = Core::referenceVariable(context, "Prometheus.Exposer");
+    expo = Core::referenceVariable(context, "Prometheus.Exposer"_swl);
 
     if (expo->valueType != SHType::Object ||
         expo->payload.objectVendorId != 'frag' ||

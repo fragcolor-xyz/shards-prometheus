@@ -103,6 +103,7 @@ include_directories(
   ${SHARDS_DIR}/deps/nameof/include
   ${SHARDS_DIR}/deps/magic_enum/include
   ${SHARDS_DIR}/deps/spdlog/include
+  ${SHARDS_DIR}/deps/entt/src
   )
 
 add_library(
