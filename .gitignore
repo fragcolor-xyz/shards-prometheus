@@ -34,3 +34,5 @@
 build
 cblocks
 shards.log
+.vscode
+.cache
