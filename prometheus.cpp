@@ -16,6 +16,7 @@
 #include "prometheus/counter.h"
 #include "prometheus/exposer.h"
 #include "prometheus/family.h"
+#include "prometheus/gauge.h"
 #include "prometheus/registry.h"
 
 using namespace shards;
@@ -27,9 +28,15 @@ struct Exposer {
 
   std::optional<prometheus::Exposer> exposer;
   std::shared_ptr<prometheus::Registry> registry;
+
   std::unordered_map<std::string, std::reference_wrapper<
                                       prometheus::Family<prometheus::Counter>>>
       counters;
+
+  std::unordered_map<std::string, std::reference_wrapper<
+                                      prometheus::Family<prometheus::Gauge>>>
+      gauges;
+
   std::string endpoint{"127.0.0.1:9090"};
   SHVar *self{nullptr};
 
@@ -76,8 +83,8 @@ struct Exposer {
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
 
-struct Increment {
-  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+struct Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline Parameters Params{
@@ -101,7 +108,6 @@ struct Increment {
   std::string _label;
   std::string _value;
   SHVar *expo{nullptr};
-  std::optional<std::reference_wrapper<prometheus::Counter>> _counter;
 
   void setParam(int index, SHVar val) {
     switch (index) {
@@ -139,6 +145,21 @@ struct Increment {
         expo->payload.objectVendorId != 'frag' ||
         expo->payload.objectTypeId != 'prom')
       throw WarmupError{"Prometheus.Exposer is not an exposer"};
+  }
+
+  void cleanup() {
+    if (expo) {
+      Core::releaseVariable(expo);
+      expo = nullptr;
+    }
+  }
+};
+
+struct Increment : Base {
+  std::optional<std::reference_wrapper<prometheus::Counter>> _counter;
+
+  void warmup(SHContext *context) {
+    Base::warmup(context);
 
     Exposer *e = reinterpret_cast<Exposer *>(expo->payload.objectValue);
 
@@ -154,15 +175,47 @@ struct Increment {
   }
 
   void cleanup() {
-    if (expo) {
-      Core::releaseVariable(expo);
-      expo = nullptr;
-    }
+    Base::cleanup();
+
     _counter.reset();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _counter->get().Increment(input.payload.floatValue);
+    _counter->get().Increment();
+    return input;
+  }
+};
+
+struct Gauge : Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  std::optional<std::reference_wrapper<prometheus::Gauge>> _gauge;
+
+  void warmup(SHContext *context) {
+    Base::warmup(context);
+
+    Exposer *e = reinterpret_cast<Exposer *>(expo->payload.objectValue);
+
+    if (e->counters.count(_name) == 0) {
+      auto &gauge =
+          prometheus::BuildGauge().Name(_name).Help("").Register(*e->registry);
+      e->gauges.emplace(_name, gauge);
+      _gauge = gauge.Add({{{_label, _value}}});
+    } else {
+      auto &gauge = e->gauges.at(_name);
+      _gauge = gauge.get().Add({{_label, _value}});
+    }
+  }
+
+  void cleanup() {
+    Base::cleanup();
+
+    _gauge.reset();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _gauge->get().Set(input.payload.floatValue);
     return input;
   }
 };
@@ -171,5 +224,6 @@ namespace shards {
 void registerShards() {
   REGISTER_SHARD("Prometheus.Exposer", Prometheus::Exposer);
   REGISTER_SHARD("Prometheus.Increment", Prometheus::Increment);
+  REGISTER_SHARD("Prometheus.Gauge", Prometheus::Gauge);
 }
 } // namespace shards
