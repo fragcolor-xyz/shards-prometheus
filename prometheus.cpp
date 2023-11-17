@@ -30,7 +30,7 @@ struct Exposer {
   std::unordered_map<std::string, std::reference_wrapper<
                                       prometheus::Family<prometheus::Counter>>>
       counters;
-  std::string endpoint{"127.0.0.1:8080"};
+  std::string endpoint{"127.0.0.1:9090"};
   SHVar *self{nullptr};
 
   static inline Parameters Params{
@@ -77,7 +77,7 @@ struct Exposer {
 };
 
 struct Increment {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline Parameters Params{
@@ -106,13 +106,13 @@ struct Increment {
   void setParam(int index, SHVar val) {
     switch (index) {
     case 0:
-      _name = val.payload.stringValue;
+      _name = std::string(val.payload.stringValue, val.payload.stringLen);
       break;
     case 1:
-      _label = val.payload.stringValue;
+      _label = std::string(val.payload.stringValue, val.payload.stringLen);
       break;
     case 2:
-      _value = val.payload.stringValue;
+      _value = std::string(val.payload.stringValue, val.payload.stringLen);
       break;
     default:
       break;
@@ -146,7 +146,7 @@ struct Increment {
       auto &counter = prometheus::BuildCounter().Name(_name).Help("").Register(
           *e->registry);
       e->counters.emplace(_name, counter);
-      _counter = counter.Add({{_label, _value}});
+      _counter = counter.Add({{{_label, _value}}});
     } else {
       auto &counter = e->counters.at(_name);
       _counter = counter.get().Add({{_label, _value}});
@@ -162,7 +162,7 @@ struct Increment {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _counter->get().Increment();
+    _counter->get().Increment(input.payload.floatValue);
     return input;
   }
 };
