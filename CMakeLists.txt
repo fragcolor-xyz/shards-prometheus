@@ -83,7 +83,7 @@ ExternalProject_Add(prometheus_a
   GIT_REPOSITORY    https://github.com/shards-lang/prometheus-cpp.git
   GIT_TAG           8400b647f46a017222f9b9d5ca300ed20090d71f
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/prometheus_a
-  CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/prometheus_a
+  CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DENABLE_PUSH=OFF -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/prometheus_a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/prometheus_a/lib/libprometheus-cpp-core.a ${CMAKE_CURRENT_BINARY_DIR}/prometheus_a/lib/libprometheus-cpp-pull.a
   )
 
