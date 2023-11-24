@@ -122,9 +122,9 @@ endif()
 ###
 
 if(WIN32)
-  target_link_libraries(cbprometheus -static libprometheus libprometheus-pull -lz)
+  target_link_libraries(cbprometheus -static libprometheus-pull libprometheus -lz)
 else()
-  target_link_libraries(cbprometheus libprometheus libprometheus-pull -lz)
+  target_link_libraries(cbprometheus libprometheus-pull libprometheus -lz)
 endif()
 
 set_target_properties(cbprometheus PROPERTIES PREFIX "")
