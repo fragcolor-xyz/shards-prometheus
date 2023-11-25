@@ -221,7 +221,7 @@ struct Gauge : Base {
 };
 } // namespace Prometheus
 namespace shards {
-void registerShards() {
+void registerExternalShards() {
   REGISTER_SHARD("Prometheus.Exposer", Prometheus::Exposer);
   REGISTER_SHARD("Prometheus.Increment", Prometheus::Increment);
   REGISTER_SHARD("Prometheus.Gauge", Prometheus::Gauge);
