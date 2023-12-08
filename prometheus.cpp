@@ -18,6 +18,7 @@
 #include "prometheus/family.h"
 #include "prometheus/gauge.h"
 #include "prometheus/registry.h"
+#include "shards/shards.hpp"
 
 using namespace shards;
 
@@ -84,8 +85,8 @@ struct Exposer {
 };
 
 struct Base {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   static inline Parameters Params{
       {"Name",
@@ -181,15 +182,15 @@ struct Increment : Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _counter->get().Increment();
+    // won't work if negative so throw in that case to correct users
+    if (input.payload.floatValue < 0)
+      throw ActivationError("Prometheus Increment should be a positive number");
+    _counter->get().Increment(input.payload.floatValue);
     return input;
   }
 };
 
 struct Gauge : Base {
-  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
-
   std::optional<std::reference_wrapper<prometheus::Gauge>> _gauge;
 
   void warmup(SHContext *context) {
