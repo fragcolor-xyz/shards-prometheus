@@ -36,3 +36,4 @@ cblocks
 shards.log
 .vscode
 .cache
+.DS_Store

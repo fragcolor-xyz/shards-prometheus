@@ -17,6 +17,7 @@
 #include "prometheus/exposer.h"
 #include "prometheus/family.h"
 #include "prometheus/gauge.h"
+#include "prometheus/histogram.h"
 #include "prometheus/registry.h"
 #include "shards/shards.hpp"
 
@@ -37,6 +38,11 @@ struct Exposer {
   std::unordered_map<std::string, std::reference_wrapper<
                                       prometheus::Family<prometheus::Gauge>>>
       gauges;
+
+  std::unordered_map<
+      std::string,
+      std::reference_wrapper<prometheus::Family<prometheus::Histogram>>>
+      histograms;
 
   std::string endpoint{"127.0.0.1:9090"};
   SHVar *self{nullptr};
@@ -85,6 +91,8 @@ struct Exposer {
 };
 
 struct Base {
+  SeqVar _buckets;
+
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
@@ -97,7 +105,10 @@ struct Base {
        {CoreInfo::StringType}},
       {"Value",
        "The name of the value to increment."_optional,
-       {CoreInfo::StringType}}};
+       {CoreInfo::StringType}},
+      {"Buckets",
+       "The buckets to use for the histogram."_optional,
+       {CoreInfo::FloatSeqType}}};
 
   static SHParametersInfo parameters() { return Params; }
 
@@ -121,6 +132,9 @@ struct Base {
     case 2:
       _value = std::string(val.payload.stringValue, val.payload.stringLen);
       break;
+    case 3:
+      _buckets = *static_cast<SeqVar *>(&val);
+      break;
     default:
       break;
     }
@@ -134,6 +148,8 @@ struct Base {
       return Var{_label};
     case 2:
       return Var{_value};
+    case 3:
+      return _buckets;
     default:
       return Var{};
     }
@@ -220,11 +236,56 @@ struct Gauge : Base {
     return input;
   }
 };
+
+#include <prometheus/histogram.h>
+
+struct Histogram : Base {
+  std::optional<std::reference_wrapper<prometheus::Histogram>> _histogram;
+
+  void warmup(SHContext *context) {
+    Base::warmup(context);
+
+    Exposer *e = reinterpret_cast<Exposer *>(expo->payload.objectValue);
+
+    std::vector<double> buckets;
+    for (auto &bucket : _buckets) {
+      shassert(bucket.valueType == SHType::Float &&
+               "Histogram buckets must be floats");
+      buckets.push_back(bucket.payload.floatValue);
+    }
+
+    if (e->histograms.count(_name) == 0) {
+      auto &histogram =
+          prometheus::BuildHistogram().Name(_name).Register(*e->registry);
+      e->histograms.emplace(_name, histogram);
+      _histogram = std::optional(std::ref(histogram.Add(
+          {{_label, _value}}, prometheus::Histogram::BucketBoundaries{
+                                  buckets.begin(), buckets.end()})));
+    } else {
+      auto &histogram = e->histograms.at(_name);
+      _histogram = std::optional(std::ref(histogram.get().Add(
+          {{_label, _value}}, prometheus::Histogram::BucketBoundaries{
+                                  buckets.begin(), buckets.end()})));
+    }
+  }
+
+  void cleanup() {
+    Base::cleanup();
+
+    _histogram.reset();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _histogram->get().Observe(input.payload.floatValue);
+    return input;
+  }
+};
 } // namespace Prometheus
 namespace shards {
 void registerExternalShards() {
   REGISTER_SHARD("Prometheus.Exposer", Prometheus::Exposer);
   REGISTER_SHARD("Prometheus.Increment", Prometheus::Increment);
   REGISTER_SHARD("Prometheus.Gauge", Prometheus::Gauge);
+  REGISTER_SHARD("Prometheus.Histogram", Prometheus::Histogram);
 }
 } // namespace shards
