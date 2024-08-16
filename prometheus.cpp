@@ -184,10 +184,16 @@ struct Increment : Base {
       auto &counter = prometheus::BuildCounter().Name(_name).Help("").Register(
           *e->registry);
       e->counters.emplace(_name, counter);
-      _counter = counter.Add({{{_label, _value}}});
+      if (_label.empty())
+        _counter = counter.Add({});
+      else
+        _counter = counter.Add({{{_label, _value}}});
     } else {
       auto &counter = e->counters.at(_name);
-      _counter = counter.get().Add({{_label, _value}});
+      if (_label.empty())
+        _counter = counter.get().Add({});
+      else
+        _counter = counter.get().Add({{{_label, _value}}});
     }
   }
 
@@ -218,10 +224,16 @@ struct Gauge : Base {
       auto &gauge =
           prometheus::BuildGauge().Name(_name).Help("").Register(*e->registry);
       e->gauges.emplace(_name, gauge);
-      _gauge = gauge.Add({{{_label, _value}}});
+      if (_label.empty())
+        _gauge = gauge.Add({});
+      else
+        _gauge = gauge.Add({{{_label, _value}}});
     } else {
       auto &gauge = e->gauges.at(_name);
-      _gauge = gauge.get().Add({{_label, _value}});
+      if (_label.empty())
+        _gauge = gauge.get().Add({});
+      else
+        _gauge = gauge.get().Add({{{_label, _value}}});
     }
   }
 
@@ -258,14 +270,24 @@ struct Histogram : Base {
       auto &histogram =
           prometheus::BuildHistogram().Name(_name).Register(*e->registry);
       e->histograms.emplace(_name, histogram);
-      _histogram = std::optional(std::ref(histogram.Add(
-          {{_label, _value}}, prometheus::Histogram::BucketBoundaries{
-                                  buckets.begin(), buckets.end()})));
+      if (_label.empty())
+        _histogram = std::optional(
+            std::ref(histogram.Add({}, prometheus::Histogram::BucketBoundaries{
+                                           buckets.begin(), buckets.end()})));
+      else
+        _histogram = std::optional(std::ref(histogram.Add(
+            {{_label, _value}}, prometheus::Histogram::BucketBoundaries{
+                                    buckets.begin(), buckets.end()})));
     } else {
       auto &histogram = e->histograms.at(_name);
-      _histogram = std::optional(std::ref(histogram.get().Add(
-          {{_label, _value}}, prometheus::Histogram::BucketBoundaries{
-                                  buckets.begin(), buckets.end()})));
+      if (_label.empty())
+        _histogram = std::optional(std::ref(
+            histogram.get().Add({}, prometheus::Histogram::BucketBoundaries{
+                                        buckets.begin(), buckets.end()})));
+      else
+        _histogram = std::optional(std::ref(histogram.get().Add(
+            {{_label, _value}}, prometheus::Histogram::BucketBoundaries{
+                                    buckets.begin(), buckets.end()})));
     }
   }
 
