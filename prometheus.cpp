@@ -55,7 +55,7 @@ struct Exposer {
   static SHParametersInfo parameters() { return Params; }
 
   void setParam(int index, SHVar value) {
-    endpoint = value.payload.stringValue;
+    endpoint = std::string(value.payload.stringValue, value.payload.stringLen);
   }
 
   SHVar getParam(int index) { return Var{endpoint}; }
