@@ -68,6 +68,8 @@ struct Exposer {
   static SHExposedTypesInfo exposedVariables() { return {&ExposerInfo, 1, 0}; }
 
   void warmup(SHContext *context) {
+    auto msg = "Opening prometheus exposer on " + endpoint;
+    shards::Core::log(toSWL(msg));
     exposer.emplace(endpoint);
     registry = std::make_shared<prometheus::Registry>();
     self = Core::referenceVariable(context, "Prometheus.Exposer"_swl);
